@@ -8,13 +8,21 @@ import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSeriali
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.web.client.RestTemplate;
 
+/**
+ * 通用 Spring Bean：HTTP 客户端与 Redis 序列化模板。
+ */
 @Configuration
 public class BeanConfig {
+
+    /** 调用高德 REST 等外部 HTTP 接口 */
     @Bean
     public RestTemplate restTemplate() {
         return new RestTemplate();
     }
 
+    /**
+     * 通用 RedisTemplate，Key 为 String，Value/HashValue 使用 Jackson JSON 序列化。
+     */
     @Bean
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
@@ -28,4 +36,3 @@ public class BeanConfig {
 
     }
 }
-

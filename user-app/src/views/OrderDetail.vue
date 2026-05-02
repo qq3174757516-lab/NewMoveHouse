@@ -10,7 +10,7 @@
             </div>
             <el-timeline>
               <el-timeline-item v-for="l in order.logs" :key="l.id" :timestamp="l.createdAt" placement="top">
-                {{ l.fromStatus || '创建' }} → {{ l.toStatus }} {{ l.remark }}
+                {{ statusCn(l.fromStatus) || '创建' }} → {{ statusCn(l.toStatus) }} {{ l.remark }}
               </el-timeline-item>
             </el-timeline>
           </div>
@@ -29,11 +29,11 @@
               <el-descriptions-item label="路线">{{ order.startAddress }} → {{ order.endAddress }}</el-descriptions-item>
               <el-descriptions-item label="车型">{{ order.vehicleTypeName }}</el-descriptions-item>
               <el-descriptions-item label="金额">￥{{ order.finalAmount }}</el-descriptions-item>
-              <el-descriptions-item label="支付">{{ order.paymentStatus }}</el-descriptions-item>
+              <el-descriptions-item label="支付">{{ payCn(order.paymentStatus) }}</el-descriptions-item>
             </el-descriptions>
             <div class="action-bar">
               <el-button v-if="order.status==='MOVED'" type="primary" :icon="Wallet" @click="$router.push(`/payment/${order.id}`)">去支付</el-button>
-              <el-button v-if="order.status==='WAITING_ACCEPT'" @click="cancel">取消订单</el-button>
+              <el-button v-if="['WAITING_ACCEPT','ACCEPTED'].includes(order.status)" @click="cancel">取消订单</el-button>
             </div>
           </div>
           <div class="card">
@@ -61,6 +61,9 @@ import { Refresh, Wallet } from '@element-plus/icons-vue'
 import http from '../api/http'
 import DriverMap from '../components/DriverMap.vue'
 import StatusTag from '../components/StatusTag.vue'
+import { orderStatusCn, paymentStatusCn } from '../utils/orderStatus'
+const statusCn = orderStatusCn
+const payCn = paymentStatusCn
 const route=useRoute(); const order=ref(null); const driverLocation=ref(null); const loading=ref(false); const reviewing=ref(false); const review=reactive({rating:5,content:''})
 async function load(){ loading.value=true; try{ order.value=await http.get(`/user/orders/${route.params.id}`); if(order.value.driverId) driverLocation.value=await http.get(`/common/driver-location/${order.value.driverId}`) } finally{ loading.value=false } }
 async function cancel(){ order.value=await http.post(`/user/orders/${order.value.id}/cancel`,{reason:'用户主动取消'}); ElMessage.success('订单已取消') }

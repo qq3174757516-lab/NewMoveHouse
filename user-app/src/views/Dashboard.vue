@@ -30,14 +30,24 @@
       <h2>地址与服务信息</h2>
       <el-form label-width="110px" :model="form">
         <el-form-item label="起点">
-          <el-input v-model="form.startAddress" placeholder="请选择起点或手动输入">
-            <template #append><MapPicker label="地图选点" @pick="p=>pick('start',p)" /></template>
-          </el-input>
+          <div class="addr-line">
+            <el-select v-model="startAddrId" placeholder="常用地址" clearable style="width:160px" @change="useSaved('start', $event)">
+              <el-option v-for="a in addresses" :key="a.id" :label="a.name" :value="a.id" />
+            </el-select>
+            <el-input v-model="form.startAddress" placeholder="请选择起点或手动输入">
+              <template #append><MapPicker label="地图选点" @pick="p=>pick('start',p)" /></template>
+            </el-input>
+          </div>
         </el-form-item>
         <el-form-item label="终点">
-          <el-input v-model="form.endAddress" placeholder="请选择终点或手动输入">
-            <template #append><MapPicker label="地图选点" @pick="p=>pick('end',p)" /></template>
-          </el-input>
+          <div class="addr-line">
+            <el-select v-model="endAddrId" placeholder="常用地址" clearable style="width:160px" @change="useSaved('end', $event)">
+              <el-option v-for="a in addresses" :key="a.id" :label="a.name" :value="a.id" />
+            </el-select>
+            <el-input v-model="form.endAddress" placeholder="请选择终点或手动输入">
+              <template #append><MapPicker label="地图选点" @pick="p=>pick('end',p)" /></template>
+            </el-input>
+          </div>
         </el-form-item>
         <div class="grid">
           <el-form-item label="起点楼层"><el-input-number v-model="form.startFloor" :min="1" /> <el-checkbox v-model="form.startHasElevator">有电梯</el-checkbox></el-form-item>
@@ -79,6 +89,9 @@ import MapPicker from '../components/MapPicker.vue'
 
 const router = useRouter()
 const vehicles = ref([])
+const addresses = ref([])
+const startAddrId = ref(null)
+const endAddrId = ref(null)
 const fee = ref(null)
 const loading = ref(false)
 const estimating = ref(false)
@@ -102,10 +115,30 @@ const form = reactive({
   contactName: '张三',
   contactPhone: '13800000000'
 })
+/** 与 el-date-picker value-format="YYYY-MM-DDTHH:mm:ss" 一致，用于预约时间默认值为“当前时刻” */
+function defaultAppointmentTime() {
+  const d = new Date()
+  const p = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+}
 const step = computed(() => form.vehicleTypeId && form.startAddress && form.endAddress ? 2 : form.vehicleTypeId ? 1 : 0)
 function scrollToForm(){ formRef.value?.scrollIntoView({behavior:'smooth'}) }
 function selectVehicle(v){ form.vehicleTypeId=v.id; estimate() }
-function pick(type,p){ if(type==='start'){form.startAddress=p.address;form.startLng=p.lng;form.startLat=p.lat}else{form.endAddress=p.address;form.endLng=p.lng;form.endLat=p.lat} estimate() }
+function pick(type,p){
+  const addr = p.address || `${p.lng},${p.lat}`
+  if(type==='start'){
+    form.startAddress=addr;form.startLng=p.lng;form.startLat=p.lat
+  }else{
+    form.endAddress=addr;form.endLng=p.lng;form.endLat=p.lat
+  }
+  estimate()
+}
+function useSaved(type, id){
+  const hit = addresses.value.find(a => a.id === id)
+  if(!hit) return
+  const p = { lng: Number(hit.lng), lat: Number(hit.lat), address: hit.detail || hit.name }
+  pick(type, p)
+}
 function payload(){ return { ...form, appointmentTime: form.appointmentTime || null } }
 async function estimate(){ if(!form.vehicleTypeId) return; estimating.value=true; try{ fee.value=await http.post('/common/estimate', payload()) } finally{ estimating.value=false } }
 async function create(){
@@ -120,9 +153,20 @@ async function create(){
   }
 }
 watch(() => [form.startFloor,form.endFloor,form.startHasElevator,form.endHasElevator,form.largeItemCount,form.appointmentTime], estimate)
-onMounted(async()=>{ loading.value=true; try{ vehicles.value=await http.get('/common/vehicle-types'); form.vehicleTypeId=vehicles.value[0]?.id; await estimate() } finally{ loading.value=false } })
+onMounted(async()=>{
+  if (!form.appointmentTime) form.appointmentTime = defaultAppointmentTime()
+  loading.value=true
+  try{
+    const [v,a] = await Promise.all([http.get('/common/vehicle-types'), http.get('/user/addresses')])
+    vehicles.value=v
+    addresses.value=a || []
+    form.vehicleTypeId=vehicles.value[0]?.id
+    await estimate()
+  } finally{ loading.value=false }
+})
 </script>
 
 <style scoped>
 h2{margin-top:24px}.fee-panel{display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding:18px;border-radius:16px;background:var(--primary-soft)}
+.addr-line{display:grid;grid-template-columns:160px 1fr;gap:10px;width:100%}
 </style>

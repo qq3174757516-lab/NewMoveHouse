@@ -10,6 +10,9 @@ import java.math.RoundingMode;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 高德驾车路径规划 REST 封装；无有效 Key 或请求失败时回退为直线距离 × 系数估算。
+ */
 @Component
 public class AmapClient {
     @Value("${amap.server-key:}")
@@ -17,6 +20,9 @@ public class AmapClient {
     @Autowired
     private RestTemplate restTemplate;
 
+    /**
+     * 查询驾车导航距离（公里），失败或无 Key 时使用 Haversine×1.25 近似。
+     */
     public BigDecimal drivingDistanceKm(BigDecimal startLng, BigDecimal startLat, BigDecimal endLng, BigDecimal endLat) {
         if (key != null && key.trim().length() > 0 && !key.startsWith("your_")) {
             try {
@@ -37,6 +43,7 @@ public class AmapClient {
         return haversineKm(startLng, startLat, endLng, endLat).multiply(new BigDecimal("1.25")).setScale(2, RoundingMode.HALF_UP);
     }
 
+    /** 地球大圆近似距离（公里） */
     private BigDecimal haversineKm(BigDecimal lng1, BigDecimal lat1, BigDecimal lng2, BigDecimal lat2) {
         double r = 6371.0;
         double dLat = Math.toRadians(lat2.doubleValue() - lat1.doubleValue());
@@ -48,4 +55,3 @@ public class AmapClient {
         return BigDecimal.valueOf(r * c).setScale(2, RoundingMode.HALF_UP);
     }
 }
-

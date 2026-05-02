@@ -24,7 +24,7 @@
   </div>
 </template>
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import http from '../api/http'
@@ -33,4 +33,9 @@ const orders=ref([]); const me=ref(null); const loading=ref(false); const accept
 async function load(){ loading.value=true; try{ me.value=await http.get('/driver/me'); auth.setProfile(me.value); if(me.value.auditStatus==='APPROVED') orders.value=await http.get('/driver/hall'); else orders.value=[] } finally{ loading.value=false } }
 async function accept(id){ accepting.value=id; try{ await http.post(`/driver/orders/${id}/accept`); ElMessage.success('抢单成功'); load() } finally{ accepting.value=null } }
 onMounted(load)
+watch(() => auth.auditStatus, (next, prev) => {
+  if (!next || next === prev) return
+  // 审核状态通过 WebSocket 实时更新后，立即刷新大厅数据
+  load()
+})
 </script>

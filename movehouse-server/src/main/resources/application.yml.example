@@ -2,6 +2,10 @@ server:
   port: 8080
 
 spring:
+  servlet:
+    multipart:
+      max-file-size: 15MB
+      max-request-size: 20MB
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/new_move_house?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
@@ -27,4 +31,7 @@ jwt:
 
 amap:
   server-key: 0ef6f046c4689eba32f9d6744bf6fd12
+  # 前端高德 JSAPI 2.0（可与 user-app/.env 的 VITE_AMAP_* 二选一或同时配置，前端优先读 .env，缺失时请求 /api/common/map-web-config）
+  web-key: ${AMAP_WEB_KEY:}
+  web-security-js-code: ${AMAP_WEB_SECURITY_JS_CODE:}
 

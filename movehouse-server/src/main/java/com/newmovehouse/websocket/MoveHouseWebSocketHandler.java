@@ -16,6 +16,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * 订单状态、审核结果等服务端推送；连接 URL 需带 {@code ?token=JWT}。
+ */
 @Component
 public class MoveHouseWebSocketHandler extends TextWebSocketHandler {
     private final Map<Long, WebSocketSession> userSessions = new ConcurrentHashMap<>();
@@ -27,6 +30,7 @@ public class MoveHouseWebSocketHandler extends TextWebSocketHandler {
     @Autowired
     private ObjectMapper objectMapper;
 
+    /** 握手后按角色登记 session，并回送 CONNECTED */
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
         String token = tokenFromQuery(session.getUri());
@@ -44,6 +48,7 @@ public class MoveHouseWebSocketHandler extends TextWebSocketHandler {
         session.sendMessage(new TextMessage(objectMapper.writeValueAsString(message("CONNECTED", "连接成功"))));
     }
 
+    /** 连接关闭时移除登记 */
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         allSessions.remove(session);
@@ -57,20 +62,24 @@ public class MoveHouseWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
+    /** 向指定用户推送一条消息 */
     public void pushToUser(Long userId, String type, Object data) {
         send(userSessions.get(userId), type, data);
     }
 
+    /** 向所有在线司机广播 */
     public void pushToDrivers(String type, Object data) {
         for (WebSocketSession session : driverSessions.values()) {
             send(session, type, data);
         }
     }
 
+    /** 向指定司机推送 */
     public void pushToDriver(Long driverId, String type, Object data) {
         send(driverSessions.get(driverId), type, data);
     }
 
+    /** 若 session 打开则发送 JSON 文本 */
     private void send(WebSocketSession session, String type, Object data) {
         if (session == null || !session.isOpen()) {
             return;
@@ -83,6 +92,7 @@ public class MoveHouseWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
+    /** 构造统一推送结构 */
     private Map<String, Object> message(String type, Object data) {
         Map<String, Object> map = new HashMap<>();
         map.put("type", type);
@@ -91,6 +101,7 @@ public class MoveHouseWebSocketHandler extends TextWebSocketHandler {
         return map;
     }
 
+    /** 从查询串解析 token 参数 */
     private String tokenFromQuery(URI uri) {
         if (uri == null || uri.getQuery() == null) {
             throw new IllegalArgumentException("missing token");
@@ -104,4 +115,3 @@ public class MoveHouseWebSocketHandler extends TextWebSocketHandler {
         throw new IllegalArgumentException("missing token");
     }
 }
-

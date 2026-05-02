@@ -6,6 +6,8 @@ import Orders from '../views/Orders.vue'
 import OrderDetail from '../views/OrderDetail.vue'
 import Payment from '../views/Payment.vue'
 import Profile from '../views/Profile.vue'
+import Announcements from '../views/Announcements.vue'
+import Complaints from '../views/Complaints.vue'
 
 const router = createRouter({
   history: createWebHistory('/'),
@@ -15,7 +17,9 @@ const router = createRouter({
     { path: '/orders', component: Orders },
     { path: '/orders/:id', component: OrderDetail },
     { path: '/payment/:orderId', component: Payment },
-    { path: '/profile', component: Profile }
+    { path: '/profile', component: Profile },
+    { path: '/announcements', component: Announcements },
+    { path: '/complaints', component: Complaints }
   ]
 })
 router.beforeEach(to => {

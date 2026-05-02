@@ -1,2 +1,76 @@
-<template><div class="page"><div class="toolbar"><h1>订单 #{{order?.id}}</h1><el-button :icon="Refresh" @click="load">刷新</el-button></div><el-skeleton :loading="loading" animated :rows="6"><div v-if="order" class="card"><div class="toolbar" style="justify-content:space-between"><span class="route">{{order.startAddress}} → {{order.endAddress}}</span><el-tag type="warning" round>{{order.status}}</el-tag></div><el-descriptions :column="1" border><el-descriptions-item label="联系人">{{order.contactName}} {{order.contactPhone}}</el-descriptions-item><el-descriptions-item label="车型">{{order.vehicleTypeName}}</el-descriptions-item><el-descriptions-item label="金额">￥{{order.finalAmount}}</el-descriptions-item></el-descriptions><div class="action-bar"><el-button v-if="order.status==='ACCEPTED'" type="primary" @click="next('ARRIVE')">确认到达装货地</el-button><el-button v-if="order.status==='ARRIVED_LOADING'" type="primary" @click="next('START_MOVE')">开始搬运</el-button><el-button v-if="order.status==='MOVING'" type="primary" @click="next('FINISH_MOVE')">搬运完成</el-button><el-button @click="report">上报当前位置</el-button></div><el-timeline><el-timeline-item v-for="l in order.logs" :key="l.id" :timestamp="l.createdAt">{{l.fromStatus||'创建'}} → {{l.toStatus}} {{l.remark}}</el-timeline-item></el-timeline></div></el-skeleton></div></template>
-<script setup>import {onMounted,ref} from 'vue';import {useRoute} from 'vue-router';import {ElMessage} from 'element-plus';import {Refresh} from '@element-plus/icons-vue';import http from '../api/http';const route=useRoute();const order=ref(null);const loading=ref(false);async function load(){loading.value=true;try{order.value=await http.get(`/driver/orders/${route.params.id}`)}finally{loading.value=false}}async function next(action){order.value=await http.post(`/driver/orders/${order.value.id}/status`,{action});ElMessage.success('状态已更新')}async function report(){const fallback={lng:112.94+Math.random()/100,lat:28.22+Math.random()/100};if(navigator.geolocation){navigator.geolocation.getCurrentPosition(async p=>{await http.post('/driver/location',{lng:p.coords.longitude,lat:p.coords.latitude});ElMessage.success('位置已上报')},async()=>{await http.post('/driver/location',fallback);ElMessage.success('已使用模拟位置上报')})}else{await http.post('/driver/location',fallback);ElMessage.success('已使用模拟位置上报')}}onMounted(load)</script>
+<template>
+  <div class="page">
+    <div class="toolbar"><h1>订单 #{{ order?.id }}</h1><el-button :icon="Refresh" @click="load">刷新</el-button></div>
+    <el-skeleton :loading="loading" animated :rows="6">
+      <div v-if="order" class="card">
+        <div class="toolbar" style="justify-content:space-between">
+          <span class="route">{{ order.startAddress }} → {{ order.endAddress }}</span>
+          <el-tag type="warning" round>{{ orderStatusCn(order.status) }}</el-tag>
+        </div>
+        <el-descriptions :column="1" border>
+          <el-descriptions-item label="联系人">{{ order.contactName }} {{ order.contactPhone }}</el-descriptions-item>
+          <el-descriptions-item label="车型">{{ order.vehicleTypeName }}</el-descriptions-item>
+          <el-descriptions-item label="金额">￥{{ order.finalAmount }}</el-descriptions-item>
+        </el-descriptions>
+        <div class="action-bar">
+          <el-button v-if="order.status==='ACCEPTED'" type="primary" @click="next('ARRIVE')">确认到达装货地</el-button>
+          <el-button v-if="order.status==='ARRIVED_LOADING'" type="primary" @click="next('START_MOVE')">开始搬运</el-button>
+          <el-button v-if="order.status==='MOVING'" type="primary" @click="next('FINISH_MOVE')">搬运完成</el-button>
+          <el-button @click="report">上报当前位置</el-button>
+        </div>
+        <el-timeline>
+          <el-timeline-item v-for="l in order.logs" :key="l.id" :timestamp="l.createdAt">
+            {{ orderStatusCn(l.fromStatus) || '创建' }} → {{ orderStatusCn(l.toStatus) }} {{ l.remark }}
+          </el-timeline-item>
+        </el-timeline>
+      </div>
+    </el-skeleton>
+  </div>
+</template>
+<script setup>
+import { onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { Refresh } from '@element-plus/icons-vue'
+import http from '../api/http'
+import { orderStatusCn } from '../utils/orderStatus'
+
+const route = useRoute()
+const order = ref(null)
+const loading = ref(false)
+
+async function load() {
+  loading.value = true
+  try {
+    order.value = await http.get(`/driver/orders/${route.params.id}`)
+  } finally {
+    loading.value = false
+  }
+}
+
+async function next(action) {
+  if (action === 'ARRIVE' || action === 'FINISH_MOVE') {
+    await report()
+  }
+  order.value = await http.post(`/driver/orders/${order.value.id}/status`, { action })
+  ElMessage.success('状态已更新')
+}
+
+async function report() {
+  const fallback = { lng: 112.94 + Math.random() / 100, lat: 28.22 + Math.random() / 100 }
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(async p => {
+      await http.post('/driver/location', { lng: p.coords.longitude, lat: p.coords.latitude })
+      ElMessage.success('位置已上报')
+    }, async () => {
+      await http.post('/driver/location', fallback)
+      ElMessage.success('已使用模拟位置上报')
+    })
+  } else {
+    await http.post('/driver/location', fallback)
+    ElMessage.success('已使用模拟位置上报')
+  }
+}
+
+onMounted(load)
+</script>

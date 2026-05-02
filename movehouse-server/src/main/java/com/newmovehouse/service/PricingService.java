@@ -17,6 +17,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * 车型与计价规则缓存、费用估算（里程、楼层、大件、夜间等）。
+ */
 @Service
 public class PricingService {
     @Autowired
@@ -26,6 +29,7 @@ public class PricingService {
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
 
+    /** 启用的车型列表（带 Redis 缓存） */
     public List<Entities.VehicleType> vehicleTypes() {
         String key = "cache:vehicle-types";
         Object cached = redisTemplate.opsForValue().get(key);
@@ -37,6 +41,7 @@ public class PricingService {
         return list;
     }
 
+    /** 计价规则列表（带 Redis 缓存） */
     public List<Entities.PricingRule> pricingRules() {
         String key = "cache:pricing-rules";
         Object cached = redisTemplate.opsForValue().get(key);
@@ -48,6 +53,7 @@ public class PricingService {
         return list;
     }
 
+    /** 根据请求参数返回分项费用与预估总额 */
     public Map<String, Object> estimate(OrderDtos.EstimateReq req) {
         Entities.VehicleType vt = mapper.getVehicleType(req.vehicleTypeId);
         if (vt == null || vt.enabled == null || vt.enabled == 0) {
@@ -70,19 +76,23 @@ public class PricingService {
         return map;
     }
 
+    /** 预估订单总金额 */
     public BigDecimal estimateAmount(OrderDtos.EstimateReq req) {
         return (BigDecimal) estimate(req).get("estimatedAmount");
     }
 
+    /** 起终点驾车距离（公里） */
     public BigDecimal distanceKm(OrderDtos.EstimateReq req) {
         return amapClient.drivingDistanceKm(req.startLng, req.startLat, req.endLng, req.endLat);
     }
 
+    /** 清除车型与规则缓存（管理端变更后调用） */
     public void evictCache() {
         redisTemplate.delete("cache:vehicle-types");
         redisTemplate.delete("cache:pricing-rules");
     }
 
+    /** 无电梯时按超出首层计费 */
     private BigDecimal floorFee(Boolean hasElevator, Integer floor) {
         if (Boolean.TRUE.equals(hasElevator)) {
             return BigDecimal.ZERO;
@@ -91,6 +101,7 @@ public class PricingService {
         return rule("floor_fee_per_floor", "10").multiply(BigDecimal.valueOf(extraFloor));
     }
 
+    /** 预约时段是否在夜间加价区间 */
     private boolean isNight(OrderDtos.EstimateReq req) {
         if (req.appointmentTime == null) {
             return false;
@@ -99,6 +110,7 @@ public class PricingService {
         return time.isAfter(LocalTime.of(22, 0)) || time.isBefore(LocalTime.of(6, 0));
     }
 
+    /** 读取计价规则数值，缺省用默认值 */
     private BigDecimal rule(String key, String def) {
         Entities.PricingRule rule = mapper.getPricingRule(key);
         return rule == null ? new BigDecimal(def) : rule.ruleValue;
@@ -108,4 +120,3 @@ public class PricingService {
         return v == null ? 0 : v;
     }
 }
-

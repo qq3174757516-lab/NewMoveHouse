@@ -13,6 +13,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * 认证服务：登录、注册、登出（JWT 黑名单）。
+ */
 @Service
 public class AuthService {
     @Autowired
@@ -22,6 +25,9 @@ public class AuthService {
     @Autowired
     private StringRedisTemplate redisTemplate;
 
+    /**
+     * 按角色校验账号密码，签发 JWT 并返回 profile。
+     */
     public Map<String, Object> login(AuthDtos.LoginReq req) {
         Map<String, Object> account;
         String auditStatus = null;
@@ -56,6 +62,7 @@ public class AuthService {
         return res;
     }
 
+    /** 注册用户并自动登录 */
     public Map<String, Object> registerUser(AuthDtos.RegisterUserReq req) {
         if (mapper.findUserByUsername(req.username) != null) {
             throw new BizException("用户名已存在");
@@ -64,6 +71,7 @@ public class AuthService {
         return login(asLogin(req.username, req.password, "USER"));
     }
 
+    /** 注册司机并自动登录 */
     public Map<String, Object> registerDriver(AuthDtos.RegisterDriverReq req) {
         if (mapper.findDriverByUsername(req.username) != null) {
             throw new BizException("用户名已存在");
@@ -72,6 +80,7 @@ public class AuthService {
         return login(asLogin(req.username, req.password, "DRIVER"));
     }
 
+    /** 将 token 写入 Redis 黑名单直至原过期时间 */
     public void logout(String header) {
         if (header == null || !header.startsWith("Bearer ")) {
             return;
@@ -80,6 +89,7 @@ public class AuthService {
         redisTemplate.opsForValue().set("jwt:blacklist:" + token, "1", jwtUtil.getExpireSeconds(), TimeUnit.SECONDS);
     }
 
+    /** 构造内部登录请求 */
     private AuthDtos.LoginReq asLogin(String username, String password, String role) {
         AuthDtos.LoginReq req = new AuthDtos.LoginReq();
         req.username = username;
@@ -88,4 +98,3 @@ public class AuthService {
         return req;
     }
 }
-

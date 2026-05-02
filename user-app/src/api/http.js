@@ -9,10 +9,21 @@ http.interceptors.request.use(config => {
   return config
 })
 http.interceptors.response.use(res => {
-  if (res.data.code !== 0) throw new Error(res.data.message)
-  return res.data.data
+  const body = res.data
+  if (body && typeof body === 'object' && 'code' in body) {
+    if (body.code !== 0) throw new Error(body.message || '请求失败')
+    return body.data
+  }
+  return body
 }, err => {
-  ElMessage.error(err.response?.data?.message || err.message || '请求失败')
+  const status = err.response?.status
+  const msg = err.response?.data?.message || err.message || '请求失败'
+  if (status === 401) {
+    const auth = useAuthStore()
+    auth.clear()
+    if (location.pathname !== '/login') location.href = '/login'
+  }
+  ElMessage.error(msg)
   throw err
 })
 export default http

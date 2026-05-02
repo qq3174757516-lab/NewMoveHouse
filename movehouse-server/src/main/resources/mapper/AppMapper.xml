@@ -126,7 +126,8 @@
         completed_at=if(#{to}='COMPLETED',now(),completed_at)
         where id=#{orderId} and status=#{from}
     </update>
-    <update id="cancelOrder">update move_orders set status='CANCELED',cancel_reason=#{reason},updated_at=now() where id=#{orderId} and status!='COMPLETED'</update>
+    <update id="cancelOrder">update move_orders set status='CANCELED',cancel_reason=#{reason},updated_at=now() where id=#{orderId} and status in ('WAITING_ACCEPT','ACCEPTED')</update>
+    <update id="cancelOrderAdmin">update move_orders set status='CANCELED',cancel_reason=#{reason},updated_at=now() where id=#{orderId} and status!='COMPLETED'</update>
     <update id="payOrder">update move_orders set payment_status='PAID',status='COMPLETED',completed_at=now(),updated_at=now() where id=#{orderId} and status='MOVED' and payment_status='UNPAID'</update>
     <insert id="insertStatusLog">
         insert into order_status_logs(order_id,operator_role,operator_id,from_status,to_status,remark)
@@ -154,10 +155,127 @@
         where id=#{driverId}
     </update>
     <select id="driverIncome" resultType="map">
-        select count(*) completedCount, ifnull(sum(final_amount),0) totalIncome,
+        select count(*) completedCount, ifnull(sum(final_amount * 0.4),0) totalIncome,
         sum(case when date(completed_at)=curdate() then 1 else 0 end) todayCount,
-        ifnull(sum(case when date_format(completed_at,'%Y-%m')=date_format(now(),'%Y-%m') then final_amount else 0 end),0) monthIncome
+        ifnull(sum(case when date_format(completed_at,'%Y-%m')=date_format(now(),'%Y-%m') then final_amount * 0.4 else 0 end),0) monthIncome
         from move_orders where driver_id=#{driverId} and status='COMPLETED'
+    </select>
+
+    <select id="driverIncomeDashboard" resultType="map">
+        select
+        (select count(*) from move_orders where driver_id=#{driverId}) as totalOrders,
+        (select count(*) from move_orders where driver_id=#{driverId} and status='COMPLETED') as completedOrders,
+        (select count(*) from move_orders where driver_id=#{driverId} and status in ('ACCEPTED','ARRIVED_LOADING','MOVING','MOVED')) as runningOrders,
+        (select ifnull(sum(final_amount * 0.4),0) from move_orders where driver_id=#{driverId} and status='COMPLETED')
+          - (select ifnull(sum(penalty_amount),0) from complaints where driver_id=#{driverId} and action_type='DEDUCT') as totalIncome,
+        (select ifnull(sum(final_amount * 0.4),0) from move_orders where driver_id=#{driverId} and status='COMPLETED' and date(completed_at)=curdate())
+          - (select ifnull(sum(penalty_amount),0) from complaints where driver_id=#{driverId} and action_type='DEDUCT' and date(updated_at)=curdate()) as todayIncome,
+        (select ifnull(sum(final_amount * 0.4),0) from move_orders where driver_id=#{driverId} and status='COMPLETED' and date_format(completed_at,'%Y-%m')=date_format(now(),'%Y-%m'))
+          - (select ifnull(sum(penalty_amount),0) from complaints where driver_id=#{driverId} and action_type='DEDUCT' and date_format(updated_at,'%Y-%m')=date_format(now(),'%Y-%m')) as monthIncome,
+        (select count(*) from reviews r join move_orders o on r.order_id=o.id where o.driver_id=#{driverId} and r.rating&lt;=2 and r.hidden=0) as lowRatingComplaintCount,
+        (select count(*) from complaints c where c.driver_id=#{driverId} and c.status in ('OPEN','IN_PROGRESS')) as complaintTicketOpenCount,
+        (select count(*) from complaints c where c.driver_id=#{driverId}) as complaintTicketTotalCount
+    </select>
+
+    <select id="driverIncomeTrend7d" resultType="map">
+        select date_format(completed_at,'%Y-%m-%d') day, count(*) cnt, ifnull(sum(final_amount * 0.4),0) income
+        from move_orders
+        where driver_id=#{driverId} and status='COMPLETED' and completed_at &gt;= date_sub(curdate(), interval 6 day)
+        group by date_format(completed_at,'%Y-%m-%d')
+        order by day asc
+    </select>
+
+    <select id="listAnnouncementsAdmin" resultType="com.newmovehouse.entity.Entities$Announcement">
+        select id,audience,title,content,enabled,created_at createdAt,updated_at updatedAt
+        from announcements order by id desc
+    </select>
+
+    <insert id="insertAnnouncement" useGeneratedKeys="true" keyProperty="id">
+        insert into announcements(audience,title,content,enabled)
+        values(#{audience},#{title},#{content},#{enabled})
+    </insert>
+
+    <update id="updateAnnouncement">
+        update announcements set audience=#{audience},title=#{title},content=#{content},enabled=#{enabled},updated_at=now()
+        where id=#{id}
+    </update>
+
+    <delete id="deleteAnnouncement">delete from announcements where id=#{id}</delete>
+
+    <select id="listAnnouncementsByAudience" resultType="com.newmovehouse.entity.Entities$Announcement">
+        select id,audience,title,content,enabled,created_at createdAt,updated_at updatedAt
+        from announcements where audience=#{audience} and enabled=1 order by id desc limit 50
+    </select>
+
+    <insert id="insertDriverDocument">
+        insert into driver_documents(driver_id,doc_type,file_url,original_name)
+        values(#{driverId},#{docType},#{fileUrl},#{originalName})
+    </insert>
+
+    <select id="listDriverDocuments" resultType="com.newmovehouse.entity.Entities$DriverDocument">
+        select id,driver_id driverId,doc_type docType,file_url fileUrl,original_name originalName,created_at createdAt
+        from driver_documents where driver_id=#{driverId} order by id desc
+    </select>
+
+    <select id="listDriverDocumentsAdmin" resultType="com.newmovehouse.entity.Entities$DriverDocument">
+        select id,driver_id driverId,doc_type docType,file_url fileUrl,original_name originalName,created_at createdAt
+        from driver_documents where driver_id=#{driverId} order by id desc
+    </select>
+
+    <update id="updateUserProfile">
+        update users set phone=#{phone}, nickname=#{nickname}, updated_at=now() where id=#{userId}
+    </update>
+
+    <update id="updateDriverProfileFull">
+        update drivers set real_name=#{realName}, phone=#{phone}, vehicle_type_id=#{vehicleTypeId}, vehicle_plate=#{vehiclePlate},
+        service_area=#{serviceArea}, audit_status='PENDING', updated_at=now() where id=#{driverId}
+    </update>
+
+    <insert id="insertComplaint">
+        insert into complaints(order_id,user_id,driver_id,title,content,image_url,status,action_type,penalty_amount)
+        values(#{orderId},#{userId},#{driverId},#{title},#{content},#{imageUrl},'OPEN','NONE',0)
+    </insert>
+
+    <select id="getComplaintByOrder" resultType="map">
+        select id,order_id orderId,user_id userId,driver_id driverId,title,content,image_url imageUrl,status,action_type actionType,penalty_amount penaltyAmount,admin_remark adminRemark,created_at createdAt,updated_at updatedAt
+        from complaints where order_id=#{orderId}
+    </select>
+
+    <select id="listUserComplaints" resultType="map">
+        select c.id,c.order_id orderId,c.title,c.content,c.image_url imageUrl,c.status,c.action_type actionType,c.penalty_amount penaltyAmount,c.admin_remark adminRemark,c.created_at createdAt,
+        o.start_address startAddress,o.end_address endAddress,o.final_amount finalAmount,o.status orderStatus
+        from complaints c join move_orders o on c.order_id=o.id
+        where c.user_id=#{userId}
+        order by c.id desc
+    </select>
+
+    <select id="listDriverComplaints" resultType="map">
+        select c.id,c.order_id orderId,c.title,c.content,c.image_url imageUrl,c.status,c.action_type actionType,c.penalty_amount penaltyAmount,c.admin_remark adminRemark,c.created_at createdAt,
+        o.start_address startAddress,o.end_address endAddress,o.final_amount finalAmount,o.status orderStatus
+        from complaints c join move_orders o on c.order_id=o.id
+        where c.driver_id=#{driverId}
+        order by c.id desc
+    </select>
+
+    <select id="listAdminComplaints" resultType="map">
+        select c.id,c.order_id orderId,c.user_id userId,c.driver_id driverId,c.title,c.content,c.image_url imageUrl,c.status,c.action_type actionType,c.penalty_amount penaltyAmount,c.admin_remark adminRemark,c.created_at createdAt,
+        u.username userName,d.real_name driverName,o.start_address startAddress,o.end_address endAddress,o.status orderStatus
+        from complaints c
+        left join users u on c.user_id=u.id
+        left join drivers d on c.driver_id=d.id
+        left join move_orders o on c.order_id=o.id
+        <where>
+            <if test="status!=null and status!=''">c.status=#{status}</if>
+        </where>
+        order by c.id desc
+    </select>
+
+    <update id="updateComplaint">
+        update complaints set status=#{status}, admin_remark=#{adminRemark}, action_type=#{actionType}, penalty_amount=#{penaltyAmount}, updated_at=now() where id=#{id}
+    </update>
+
+    <select id="countDriverOpenComplaints" resultType="int">
+        select count(*) from complaints where driver_id=#{driverId} and status in ('OPEN','IN_PROGRESS')
     </select>
 
     <select id="listUsers" resultType="map">select id,username,phone,nickname,status,created_at createdAt from users order by id desc</select>
@@ -174,6 +292,15 @@
         (select count(*) from users) userCount,
         (select ifnull(sum(final_amount),0) from move_orders where status='COMPLETED' and date(completed_at)=curdate()) todayIncome
     </select>
+
+    <select id="adminOrdersTrend7d" resultType="map">
+        select date_format(created_at,'%Y-%m-%d') day, count(*) cnt
+        from move_orders
+        where date(created_at) &gt;= date_sub(curdate(), interval 6 day)
+        group by date_format(created_at,'%Y-%m-%d')
+        order by day asc
+    </select>
+
     <insert id="insertAdminLog">
         insert into admin_operation_logs(admin_id,action,target_type,target_id,detail)
         values(#{adminId},#{action},#{targetType},#{targetId},#{detail})

@@ -8,12 +8,12 @@
         <el-tab-pane label="登录" name="login" />
         <el-tab-pane label="注册" name="register" />
       </el-tabs>
-      <el-form :model="form" label-width="80px">
-        <el-form-item label="用户名"><el-input v-model="form.username" /></el-form-item>
-        <el-form-item label="密码"><el-input v-model="form.password" type="password" /></el-form-item>
+      <el-form :model="form" label-width="80px" autocomplete="off">
+        <el-form-item label="用户名"><el-input v-model="form.username" autocomplete="off" /></el-form-item>
+        <el-form-item label="密码"><el-input v-model="form.password" type="password" autocomplete="new-password" /></el-form-item>
         <template v-if="mode==='register'">
-          <el-form-item label="手机号"><el-input v-model="form.phone" /></el-form-item>
-          <el-form-item label="昵称"><el-input v-model="form.nickname" /></el-form-item>
+          <el-form-item label="手机号"><el-input v-model="form.phone" autocomplete="off" /></el-form-item>
+          <el-form-item label="昵称"><el-input v-model="form.nickname" autocomplete="off" /></el-form-item>
         </template>
         <el-button type="primary" class="full" :loading="loading" @click="submit">
           {{ mode==='login' ? '用户登录' : '用户注册' }}
@@ -44,7 +44,7 @@ const roleUrls = {
   DRIVER: 'http://127.0.0.1:5174/login',
   ADMIN: 'http://127.0.0.1:5175/login'
 }
-const form = reactive({ username: 'user1', password: '123456', phone: '13800000000', nickname: '用户' })
+const form = reactive({ username: '', password: '', phone: '', nickname: '' })
 
 function switchRole(role) {
   if (role !== 'USER') window.location.href = roleUrls[role]
