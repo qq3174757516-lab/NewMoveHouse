@@ -1,0 +1,2 @@
+<template><div class="page"><h1>收入统计</h1><div class="card"><el-statistic title="完成单量" :value="data.completedCount||0"/><el-statistic title="累计收入" :value="Number(data.totalIncome||0)" prefix="￥"/><el-statistic title="本月收入" :value="Number(data.monthIncome||0)" prefix="￥"/></div></div></template>
+<script setup>import {onMounted,ref} from 'vue';import http from '../api/http';const data=ref({});onMounted(async()=>data.value=await http.get('/driver/income'))</script>

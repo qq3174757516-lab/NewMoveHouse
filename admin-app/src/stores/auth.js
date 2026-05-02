@@ -1,0 +1,2 @@
+import { defineStore } from 'pinia'
+export const useAuthStore=defineStore('auth',{state:()=>({token:localStorage.getItem('admin_token')||'',profile:JSON.parse(localStorage.getItem('admin_profile')||'null')}),actions:{setAuth(d){this.token=d.token;this.profile=d.profile;localStorage.setItem('admin_token',d.token);localStorage.setItem('admin_profile',JSON.stringify(d.profile||{}))},clear(){this.token='';this.profile=null;localStorage.removeItem('admin_token');localStorage.removeItem('admin_profile')}}})

@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.newmovehouse.mapper.AppMapper">
+    <select id="findUserByUsername" resultType="map">select id,username,password_hash passwordHash,phone,nickname,status,created_at createdAt from users where username=#{username}</select>
+    <select id="findDriverByUsername" resultType="map">select id,username,password_hash passwordHash,phone,real_name realName,vehicle_plate vehiclePlate,vehicle_type_id vehicleTypeId,service_area serviceArea,audit_status auditStatus,status,created_at createdAt from drivers where username=#{username}</select>
+    <select id="findAdminByUsername" resultType="map">select id,username,password_hash passwordHash,real_name realName,created_at createdAt from admins where username=#{username}</select>
+    <select id="findUserById" resultType="map">select id,username,phone,nickname,status,created_at createdAt from users where id=#{id}</select>
+    <select id="findDriverById" resultType="map">select d.id,d.username,d.phone,d.real_name realName,d.vehicle_plate vehiclePlate,d.vehicle_type_id vehicleTypeId,d.service_area serviceArea,d.audit_status auditStatus,d.status,vt.name vehicleTypeName,d.created_at createdAt from drivers d left join vehicle_types vt on d.vehicle_type_id=vt.id where d.id=#{id}</select>
+
+    <insert id="insertUser" useGeneratedKeys="true" keyProperty="req.id">
+        insert into users(username,password_hash,phone,nickname,status)
+        values(#{req.username},#{passwordHash},#{req.phone},#{req.nickname},1)
+    </insert>
+    <insert id="insertDriver" useGeneratedKeys="true" keyProperty="req.id">
+        insert into drivers(username,password_hash,phone,real_name,vehicle_plate,vehicle_type_id,service_area,audit_status,status)
+        values(#{req.username},#{passwordHash},#{req.phone},#{req.realName},#{req.vehiclePlate},#{req.vehicleTypeId},#{req.serviceArea},'PENDING',1)
+    </insert>
+    <update id="updateUserStatus">update users set status=#{status}, updated_at=now() where id=#{id}</update>
+    <update id="updateDriverStatus">
+        update drivers set audit_status=#{status}, status=if(#{status}='DISABLED',0,1), updated_at=now() where id=#{id}
+    </update>
+    <insert id="insertDriverAudit">
+        insert into driver_audit_records(driver_id,admin_id,audit_status,reason) values(#{driverId},#{adminId},#{status},#{reason})
+    </insert>
+
+    <select id="listAddresses" resultType="map">select id,user_id userId,name,detail,lng,lat,contact_name contactName,contact_phone contactPhone,created_at createdAt from user_addresses where user_id=#{userId} order by id desc</select>
+    <insert id="insertAddress">
+        insert into user_addresses(user_id,name,detail,lng,lat,contact_name,contact_phone)
+        values(#{userId},#{req.name},#{req.detail},#{req.lng},#{req.lat},#{req.contactName},#{req.contactPhone})
+    </insert>
+    <update id="updateAddress">
+        update user_addresses set name=#{req.name},detail=#{req.detail},lng=#{req.lng},lat=#{req.lat},
+        contact_name=#{req.contactName},contact_phone=#{req.contactPhone},updated_at=now()
+        where id=#{req.id} and user_id=#{userId}
+    </update>
+    <delete id="deleteAddress">delete from user_addresses where id=#{id} and user_id=#{userId}</delete>
+
+    <select id="listVehicleTypes" resultType="com.newmovehouse.entity.Entities$VehicleType">
+        select id,name,description,base_price basePrice,per_km_price perKmPrice,load_capacity loadCapacity,sort_order sortOrder,enabled
+        from vehicle_types where enabled=1 order by sort_order,id
+    </select>
+    <select id="listAdminVehicleTypes" resultType="com.newmovehouse.entity.Entities$VehicleType">
+        select id,name,description,base_price basePrice,per_km_price perKmPrice,load_capacity loadCapacity,sort_order sortOrder,enabled
+        from vehicle_types order by sort_order,id
+    </select>
+    <select id="getVehicleType" resultType="com.newmovehouse.entity.Entities$VehicleType">
+        select id,name,description,base_price basePrice,per_km_price perKmPrice,load_capacity loadCapacity,sort_order sortOrder,enabled from vehicle_types where id=#{id}
+    </select>
+    <insert id="insertVehicleType" useGeneratedKeys="true" keyProperty="id">
+        insert into vehicle_types(name,description,base_price,per_km_price,load_capacity,sort_order,enabled)
+        values(#{name},#{description},#{basePrice},#{perKmPrice},#{loadCapacity},#{sortOrder},#{enabled})
+    </insert>
+    <update id="updateVehicleType">
+        update vehicle_types set name=#{name},description=#{description},base_price=#{basePrice},
+        per_km_price=#{perKmPrice},load_capacity=#{loadCapacity},sort_order=#{sortOrder},enabled=#{enabled},updated_at=now() where id=#{id}
+    </update>
+    <delete id="deleteVehicleType">delete from vehicle_types where id=#{id}</delete>
+
+    <select id="listPricingRules" resultType="com.newmovehouse.entity.Entities$PricingRule">select * from pricing_rules order by id</select>
+    <select id="getPricingRule" resultType="com.newmovehouse.entity.Entities$PricingRule">select * from pricing_rules where rule_key=#{ruleKey} and enabled=1</select>
+    <insert id="upsertPricingRule">
+        insert into pricing_rules(rule_key,rule_value,description,enabled)
+        values(#{ruleKey},#{ruleValue},#{description},#{enabled})
+        on duplicate key update rule_value=values(rule_value),description=values(description),enabled=values(enabled),updated_at=now()
+    </insert>
+
+    <insert id="insertOrder" useGeneratedKeys="true" keyProperty="req.id">
+        insert into move_orders(user_id,vehicle_type_id,start_address,start_lng,start_lat,end_address,end_lng,end_lat,
+        item_description,start_has_elevator,end_has_elevator,start_floor,end_floor,large_item_count,appointment_time,
+        contact_name,contact_phone,distance_km,estimated_amount,final_amount,status,payment_status)
+        values(#{userId},#{req.vehicleTypeId},#{req.startAddress},#{req.startLng},#{req.startLat},#{req.endAddress},#{req.endLng},#{req.endLat},
+        #{req.itemDescription},#{req.startHasElevator},#{req.endHasElevator},#{req.startFloor},#{req.endFloor},#{req.largeItemCount},#{req.appointmentTime},
+        #{req.contactName},#{req.contactPhone},#{distanceKm},#{amount},#{amount},'WAITING_ACCEPT','UNPAID')
+    </insert>
+    <select id="getOrder" resultType="map">
+        select o.id,o.user_id userId,o.driver_id driverId,o.vehicle_type_id vehicleTypeId,
+        o.start_address startAddress,o.start_lng startLng,o.start_lat startLat,o.end_address endAddress,o.end_lng endLng,o.end_lat endLat,
+        o.item_description itemDescription,o.start_has_elevator startHasElevator,o.end_has_elevator endHasElevator,o.start_floor startFloor,o.end_floor endFloor,
+        o.large_item_count largeItemCount,o.appointment_time appointmentTime,o.contact_name contactName,o.contact_phone contactPhone,o.distance_km distanceKm,
+        o.estimated_amount estimatedAmount,o.final_amount finalAmount,o.status,o.payment_status paymentStatus,o.cancel_reason cancelReason,
+        o.created_at createdAt,o.updated_at updatedAt,u.nickname userNickname,d.real_name driverName,d.phone driverPhone,d.vehicle_plate vehiclePlate,
+        vt.name vehicleTypeName
+        from move_orders o
+        left join users u on o.user_id=u.id
+        left join drivers d on o.driver_id=d.id
+        left join vehicle_types vt on o.vehicle_type_id=vt.id
+        where o.id=#{id}
+    </select>
+    <select id="listUserOrders" resultType="map">
+        select o.id,o.user_id userId,o.driver_id driverId,o.start_address startAddress,o.end_address endAddress,o.appointment_time appointmentTime,
+        o.final_amount finalAmount,o.status,o.payment_status paymentStatus,o.created_at createdAt,d.real_name driverName,vt.name vehicleTypeName from move_orders o
+        left join drivers d on o.driver_id=d.id left join vehicle_types vt on o.vehicle_type_id=vt.id
+        where o.user_id=#{userId}
+        <if test="status!=null and status!=''">and o.status=#{status}</if>
+        order by o.id desc
+    </select>
+    <select id="listDriverOrders" resultType="map">
+        select o.id,o.user_id userId,o.driver_id driverId,o.start_address startAddress,o.end_address endAddress,o.appointment_time appointmentTime,
+        o.final_amount finalAmount,o.status,o.payment_status paymentStatus,o.created_at createdAt,vt.name vehicleTypeName from move_orders o left join vehicle_types vt on o.vehicle_type_id=vt.id
+        where o.driver_id=#{driverId}
+        <if test="status!=null and status!=''">and o.status=#{status}</if>
+        order by o.id desc
+    </select>
+    <select id="listHallOrders" resultType="map">
+        select o.id,o.user_id userId,o.start_address startAddress,o.end_address endAddress,o.appointment_time appointmentTime,
+        o.final_amount finalAmount,o.status,o.created_at createdAt,vt.name vehicleTypeName from move_orders o left join vehicle_types vt on o.vehicle_type_id=vt.id
+        where o.status='WAITING_ACCEPT' order by o.id desc
+    </select>
+    <select id="listAdminOrders" resultType="map">
+        select o.id,o.user_id userId,o.driver_id driverId,o.start_address startAddress,o.end_address endAddress,o.appointment_time appointmentTime,
+        o.final_amount finalAmount,o.status,o.payment_status paymentStatus,o.created_at createdAt,u.username userName,d.real_name driverName,vt.name vehicleTypeName from move_orders o
+        left join users u on o.user_id=u.id left join drivers d on o.driver_id=d.id left join vehicle_types vt on o.vehicle_type_id=vt.id
+        <where><if test="status!=null and status!=''">o.status=#{status}</if></where>
+        order by o.id desc
+    </select>
+    <update id="acceptOrder">
+        update move_orders set driver_id=#{driverId},status='ACCEPTED',accepted_at=now(),updated_at=now()
+        where id=#{orderId} and status='WAITING_ACCEPT' and driver_id is null
+    </update>
+    <update id="updateOrderStatus">
+        update move_orders set status=#{to},updated_at=now(),
+        arrived_at=if(#{to}='ARRIVED_LOADING',now(),arrived_at),
+        moving_at=if(#{to}='MOVING',now(),moving_at),
+        moved_at=if(#{to}='MOVED',now(),moved_at),
+        completed_at=if(#{to}='COMPLETED',now(),completed_at)
+        where id=#{orderId} and status=#{from}
+    </update>
+    <update id="cancelOrder">update move_orders set status='CANCELED',cancel_reason=#{reason},updated_at=now() where id=#{orderId} and status!='COMPLETED'</update>
+    <update id="payOrder">update move_orders set payment_status='PAID',status='COMPLETED',completed_at=now(),updated_at=now() where id=#{orderId} and status='MOVED' and payment_status='UNPAID'</update>
+    <insert id="insertStatusLog">
+        insert into order_status_logs(order_id,operator_role,operator_id,from_status,to_status,remark)
+        values(#{orderId},#{operatorRole},#{operatorId},#{fromStatus},#{toStatus},#{remark})
+    </insert>
+    <select id="listOrderLogs" resultType="map">select id,order_id orderId,operator_role operatorRole,operator_id operatorId,from_status fromStatus,to_status toStatus,remark,created_at createdAt from order_status_logs where order_id=#{orderId} order by id</select>
+
+    <insert id="insertPayment">
+        insert into payment_records(order_id,user_id,amount,pay_status,pay_channel,payment_method,transaction_no,paid_at)
+        values(#{orderId},#{userId},#{amount},'PAID','MOCK',#{paymentMethod},concat('MOCK', date_format(now(),'%Y%m%d%H%i%s'), #{orderId}),now())
+    </insert>
+    <select id="getReviewByOrder" resultType="map">select id,order_id orderId,user_id userId,driver_id driverId,rating,content,hidden,created_at createdAt from reviews where order_id=#{orderId}</select>
+    <insert id="insertReview">
+        insert into reviews(order_id,user_id,driver_id,rating,content,hidden)
+        values(#{req.orderId},#{userId},#{driverId},#{req.rating},#{req.content},0)
+    </insert>
+    <select id="listReviews" resultType="map">
+        select r.id,r.order_id orderId,r.user_id userId,r.driver_id driverId,r.rating,r.content,r.hidden,r.created_at createdAt,u.username userName,d.real_name driverName from reviews r
+        left join users u on r.user_id=u.id left join drivers d on r.driver_id=d.id order by r.id desc
+    </select>
+    <update id="hideReview">update reviews set hidden=#{hidden},updated_at=now() where id=#{id}</update>
+
+    <update id="updateDriverProfile">
+        update drivers set vehicle_type_id=#{vehicleTypeId},vehicle_plate=#{vehiclePlate},phone=#{phone},service_area=#{serviceArea},updated_at=now()
+        where id=#{driverId}
+    </update>
+    <select id="driverIncome" resultType="map">
+        select count(*) completedCount, ifnull(sum(final_amount),0) totalIncome,
+        sum(case when date(completed_at)=curdate() then 1 else 0 end) todayCount,
+        ifnull(sum(case when date_format(completed_at,'%Y-%m')=date_format(now(),'%Y-%m') then final_amount else 0 end),0) monthIncome
+        from move_orders where driver_id=#{driverId} and status='COMPLETED'
+    </select>
+
+    <select id="listUsers" resultType="map">select id,username,phone,nickname,status,created_at createdAt from users order by id desc</select>
+    <select id="listDrivers" resultType="map">
+        select d.id,d.username,d.phone,d.real_name realName,d.vehicle_plate vehiclePlate,d.vehicle_type_id vehicleTypeId,d.service_area serviceArea,d.audit_status auditStatus,d.status,d.created_at createdAt,vt.name vehicleTypeName from drivers d left join vehicle_types vt on d.vehicle_type_id=vt.id
+        <where><if test="auditStatus!=null and auditStatus!=''">d.audit_status=#{auditStatus}</if></where>
+        order by d.id desc
+    </select>
+    <select id="dashboard" resultType="map">
+        select
+        (select count(*) from move_orders) totalOrders,
+        (select count(*) from move_orders where date(created_at)=curdate()) todayOrders,
+        (select count(*) from drivers) driverCount,
+        (select count(*) from users) userCount,
+        (select ifnull(sum(final_amount),0) from move_orders where status='COMPLETED' and date(completed_at)=curdate()) todayIncome
+    </select>
+    <insert id="insertAdminLog">
+        insert into admin_operation_logs(admin_id,action,target_type,target_id,detail)
+        values(#{adminId},#{action},#{targetType},#{targetId},#{detail})
+    </insert>
+</mapper>

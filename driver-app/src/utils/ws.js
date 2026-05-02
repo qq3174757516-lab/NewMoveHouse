@@ -1,0 +1,3 @@
+import { ElNotification } from 'element-plus'
+import { useAuthStore } from '../stores/auth'
+export function connectWs(token,onMessage){ if(!token)return null; const base=import.meta.env.VITE_WS_URL||`${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws`; const ws=new WebSocket(`${base}?token=${encodeURIComponent(token)}`); ws.onmessage=e=>{const msg=JSON.parse(e.data); if(msg.type==='NEW_ORDER'){ElNotification.success({title:'新订单',message:`${msg.data.startAddress} → ${msg.data.endAddress}`}); try{new Audio('/notify.mp3').play()}catch(_){}} if(msg.type==='DRIVER_AUDIT_RESULT'){useAuthStore().setProfile(msg.data);ElNotification.info({title:'审核结果',message:`当前状态：${msg.data.auditStatus}`})} onMessage?.(msg)}; return ws}

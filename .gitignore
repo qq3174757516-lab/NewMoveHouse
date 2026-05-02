@@ -1,0 +1,11 @@
+target/
+dist/
+node_modules/
+.idea/
+.vscode/
+*.log
+movehouse-server/src/main/resources/application.yml
+user-app/.env
+driver-app/.env
+admin-app/.env
+
