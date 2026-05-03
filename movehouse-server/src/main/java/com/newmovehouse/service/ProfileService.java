@@ -66,14 +66,9 @@ public class ProfileService {
         mapper.deleteAddress(UserContext.id(), id);
     }
 
-    /** 司机更新车型、车牌等（不含全量资料） */
-    public void updateDriverProfile(Long vehicleTypeId, String vehiclePlate, String phone, String serviceArea) {
-        mapper.updateDriverProfile(UserContext.id(), vehicleTypeId, vehiclePlate, phone, serviceArea);
-    }
-
     /** 司机全量资料更新，修改后通常需重新审核 */
     public void updateDriverProfile(AuthDtos.UpdateDriverProfileReq req) {
-        mapper.updateDriverProfileFull(UserContext.id(), req.realName, req.phone, req.vehicleTypeId, req.vehiclePlate, req.serviceArea);
+        mapper.updateDriverProfileFull(UserContext.id(), req.realName, req.phone, req.vehicleTypeId, req.vehiclePlate);
         Map<String, Object> driver = mapper.findDriverById(UserContext.id());
         cacheDriverProfile(UserContext.id(), driver);
     }

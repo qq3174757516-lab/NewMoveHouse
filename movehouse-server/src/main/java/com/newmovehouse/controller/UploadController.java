@@ -2,6 +2,7 @@ package com.newmovehouse.controller;
 
 import com.newmovehouse.common.ApiResponse;
 import com.newmovehouse.common.BizException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -17,11 +18,14 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * 通用文件上传：保存至本地 {@code uploads} 目录，返回可访问的 {@code /files/...} URL。
+ * 通用文件上传：保存至配置目录（默认项目下 uploads），返回可访问的 {@code /files/...} URL。
  */
 @RestController
 @RequestMapping("/api/upload")
 public class UploadController {
+
+    @Value("${upload.base-dir:uploads}")
+    private String uploadBaseDir;
 
     /**
      * 上传单个文件。
@@ -40,7 +44,7 @@ public class UploadController {
             ext = original.substring(idx);
         }
         String name = UUID.randomUUID().toString().replace("-", "") + ext;
-        Path dir = Paths.get("uploads");
+        Path dir = Paths.get(uploadBaseDir);
         Files.createDirectories(dir);
         Path target = dir.resolve(name);
         file.transferTo(target.toFile());

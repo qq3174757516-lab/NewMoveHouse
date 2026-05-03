@@ -163,6 +163,14 @@ public class AdminController {
         return ApiResponse.ok();
     }
 
+    /** 启用 / 禁用公告 */
+    @PostMapping("/announcements/{id}/enabled")
+    public ApiResponse<Void> setAnnouncementEnabled(@PathVariable Long id, @RequestBody Map<String, Integer> body) {
+        Integer en = body == null ? null : body.get("enabled");
+        adminService.setAnnouncementEnabled(id, en != null && en == 1 ? 1 : 0);
+        return ApiResponse.ok();
+    }
+
     /** 投诉列表 */
     @GetMapping("/complaints")
     public ApiResponse<List<Map<String, Object>>> complaints(@RequestParam(required = false) String status) {

@@ -112,8 +112,8 @@ const form = reactive({
   endFloor: 1,
   largeItemCount: 0,
   appointmentTime: null,
-  contactName: '张三',
-  contactPhone: '13800000000'
+  contactName: '',
+  contactPhone: ''
 })
 /** 与 el-date-picker value-format="YYYY-MM-DDTHH:mm:ss" 一致，用于预约时间默认值为“当前时刻” */
 function defaultAppointmentTime() {
@@ -157,10 +157,18 @@ onMounted(async()=>{
   if (!form.appointmentTime) form.appointmentTime = defaultAppointmentTime()
   loading.value=true
   try{
-    const [v,a] = await Promise.all([http.get('/common/vehicle-types'), http.get('/user/addresses')])
+    const [v,a,me] = await Promise.all([
+      http.get('/common/vehicle-types'),
+      http.get('/user/addresses'),
+      http.get('/user/me').catch(() => null)
+    ])
     vehicles.value=v
     addresses.value=a || []
     form.vehicleTypeId=vehicles.value[0]?.id
+    if (me) {
+      form.contactPhone = me.phone || ''
+      form.contactName = (me.nickname && String(me.nickname).trim()) ? me.nickname : (me.username || '')
+    }
     await estimate()
   } finally{ loading.value=false }
 })

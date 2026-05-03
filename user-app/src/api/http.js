@@ -6,6 +6,9 @@ const http = axios.create({ baseURL: import.meta.env.VITE_API_BASE_URL || '/api'
 http.interceptors.request.use(config => {
   const auth = useAuthStore()
   if (auth.token) config.headers.Authorization = `Bearer ${auth.token}`
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type']
+  }
   return config
 })
 http.interceptors.response.use(res => {

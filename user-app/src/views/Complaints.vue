@@ -8,7 +8,7 @@
     <div class="card">
       <el-table :data="rows" border>
         <el-table-column prop="orderId" label="订单" width="100" />
-        <el-table-column prop="title" label="标题" min-width="160" />
+        <el-table-column prop="title" label="投诉分类" min-width="160" />
         <el-table-column prop="content" label="内容" min-width="260" show-overflow-tooltip />
         <el-table-column label="凭证图片" width="100">
           <template #default="{ row }">
@@ -33,7 +33,11 @@
             <el-option v-for="o in completedOrders" :key="o.id" :label="`#${o.id} ${o.startAddress}→${o.endAddress}`" :value="o.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="标题"><el-input v-model="form.title" /></el-form-item>
+        <el-form-item label="投诉分类">
+          <el-select v-model="form.title" placeholder="请选择分类" style="width:100%">
+            <el-option v-for="c in complaintCategories" :key="c" :label="c" :value="c" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="内容"><el-input v-model="form.content" type="textarea" :rows="5" /></el-form-item>
         <el-form-item label="投诉图片">
           <el-upload :show-file-list="false" :http-request="uploadImage">
@@ -55,6 +59,15 @@ import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import http from '../api/http'
 import { complaintStatusCn } from '../utils/orderStatus'
+
+const complaintCategories = [
+  '服务态度问题',
+  '货物损坏或丢失',
+  '迟到或爽约',
+  '乱收费',
+  '车辆与约定不符',
+  '其他'
+]
 
 const rows = ref([])
 const completedOrders = ref([])
@@ -103,7 +116,8 @@ async function uploadImage(opt) {
 
 async function submit() {
   if (!form.orderId) return ElMessage.warning('请选择订单')
-  if (!form.title || !form.content) return ElMessage.warning('请填写标题与内容')
+  if (!form.title) return ElMessage.warning('请选择投诉分类')
+  if (!form.content) return ElMessage.warning('请填写投诉内容')
   if (!form.imageUrl) return ElMessage.warning('请先上传投诉图片')
   saving.value = true
   try {

@@ -36,7 +36,7 @@ create table admins (
 create table vehicle_types (
   id bigint primary key auto_increment,
   name varchar(64) not null,
-  description varchar(255),
+  description varchar(2048),
   base_price decimal(10,2) not null,
   per_km_price decimal(10,2) not null,
   load_capacity decimal(10,2),

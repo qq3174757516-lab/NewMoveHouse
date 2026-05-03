@@ -5,11 +5,13 @@ import com.newmovehouse.dto.OrderDtos;
 import com.newmovehouse.entity.Entities;
 import com.newmovehouse.service.PricingService;
 import com.newmovehouse.service.ProfileService;
+import com.newmovehouse.util.AmapGeoRestClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +26,8 @@ public class CommonController {
     private PricingService pricingService;
     @Autowired
     private ProfileService profileService;
+    @Autowired
+    private AmapGeoRestClient amapGeoRestClient;
 
     @Value("${amap.web-key:}")
     private String amapWebKey;
@@ -58,5 +62,21 @@ public class CommonController {
         m.put("key", amapWebKey == null ? "" : amapWebKey);
         m.put("securityJsCode", amapWebSecurityJsCode == null ? "" : amapWebSecurityJsCode);
         return ApiResponse.ok(m);
+    }
+
+    /**
+     * 逆地理编码（服务端 REST，用于展示地名；避免浏览器 JSAPI PlaceSearch/Geocoder 触发 INVALID_USER_SCODE）。
+     */
+    @GetMapping("/amap/regeo")
+    public ApiResponse<Map<String, Object>> amapRegeo(@RequestParam BigDecimal lng, @RequestParam BigDecimal lat) {
+        return ApiResponse.ok(amapGeoRestClient.reverseGeocode(lng, lat));
+    }
+
+    /**
+     * 关键字搜索第一条 POI（服务端 REST）。
+     */
+    @GetMapping("/amap/place-text")
+    public ApiResponse<Map<String, Object>> amapPlaceText(@RequestParam String keywords) {
+        return ApiResponse.ok(amapGeoRestClient.placeTextSearch(keywords));
     }
 }

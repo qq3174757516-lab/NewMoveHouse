@@ -21,6 +21,20 @@ export const COMPLAINT_STATUS_CN = {
   CLOSED: '已关闭'
 }
 
+/** 司机审核状态（后台/司机端展示） */
+export const AUDIT_STATUS_CN = {
+  PENDING: '待审核',
+  APPROVED: '已通过',
+  REJECTED: '已拒绝',
+  DISABLED: '已停用'
+}
+
+/** 普通用户账号状态：status 字段 0/1 */
+export const USER_ACCOUNT_STATUS_CN = {
+  0: '已禁用',
+  1: '正常'
+}
+
 export function orderStatusCn(code) {
   if (code == null || code === '') return ''
   return ORDER_STATUS_CN[code] || String(code)
@@ -34,4 +48,15 @@ export function paymentStatusCn(code) {
 export function complaintStatusCn(code) {
   if (code == null || code === '') return ''
   return COMPLAINT_STATUS_CN[code] || String(code)
+}
+
+export function auditStatusCn(code) {
+  if (code == null || code === '') return ''
+  return AUDIT_STATUS_CN[code] || String(code)
+}
+
+export function userAccountStatusCn(status) {
+  if (status === undefined || status === null) return ''
+  const k = Number(status)
+  return USER_ACCOUNT_STATUS_CN[k] || String(status)
 }

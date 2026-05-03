@@ -29,9 +29,16 @@ jwt:
   secret: change-this-secret-to-a-long-random-string
   expire-seconds: 86400
 
+# 上传文件落盘目录（需与 StaticWebConfig 的 /files/** 一致）。Windows 示例请用正斜杠
+upload:
+  base-dir: D:/Data/HNIT/graduate_project/test/testUpload
+
 amap:
+  # Web 服务 Key：路径规划、逆地理(/v3/geocode/regeo)、关键字搜索(/v3/place/text) 等 REST（控制台需勾选对应服务）
   server-key: 0ef6f046c4689eba32f9d6744bf6fd12
-  # 前端高德 JSAPI 2.0（可与 user-app/.env 的 VITE_AMAP_* 二选一或同时配置，前端优先读 .env，缺失时请求 /api/common/map-web-config）
+  # 可选：若「JS 地图 Key」与「REST Web 服务 Key」不是同一个，在此单独填 REST Key；留空则使用 server-key
+  geo-key: ${AMAP_GEO_KEY:}
+  # 前端高德 JSAPI 2.0（可与 user-app/.env 的 VITE_AMAP_* 二选一；必须与控制台「安全密钥」绑定同一应用，否则会 INVALID_USER_SCODE）
   web-key: ${AMAP_WEB_KEY:}
   web-security-js-code: ${AMAP_WEB_SECURITY_JS_CODE:}
 

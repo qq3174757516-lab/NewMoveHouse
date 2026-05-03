@@ -14,7 +14,7 @@
     </insert>
     <insert id="insertDriver" useGeneratedKeys="true" keyProperty="req.id">
         insert into drivers(username,password_hash,phone,real_name,vehicle_plate,vehicle_type_id,service_area,audit_status,status)
-        values(#{req.username},#{passwordHash},#{req.phone},#{req.realName},#{req.vehiclePlate},#{req.vehicleTypeId},#{req.serviceArea},'PENDING',1)
+        values(#{req.username},#{passwordHash},#{req.phone},#{req.realName},#{req.vehiclePlate},#{req.vehicleTypeId},null,'PENDING',1)
     </insert>
     <update id="updateUserStatus">update users set status=#{status}, updated_at=now() where id=#{id}</update>
     <update id="updateDriverStatus">
@@ -151,7 +151,7 @@
     <update id="hideReview">update reviews set hidden=#{hidden},updated_at=now() where id=#{id}</update>
 
     <update id="updateDriverProfile">
-        update drivers set vehicle_type_id=#{vehicleTypeId},vehicle_plate=#{vehiclePlate},phone=#{phone},service_area=#{serviceArea},updated_at=now()
+        update drivers set vehicle_type_id=#{vehicleTypeId},vehicle_plate=#{vehiclePlate},phone=#{phone},updated_at=now()
         where id=#{driverId}
     </update>
     <select id="driverIncome" resultType="map">
@@ -182,7 +182,7 @@
         from move_orders
         where driver_id=#{driverId} and status='COMPLETED' and completed_at &gt;= date_sub(curdate(), interval 6 day)
         group by date_format(completed_at,'%Y-%m-%d')
-        order by day asc
+        order by day desc
     </select>
 
     <select id="listAnnouncementsAdmin" resultType="com.newmovehouse.entity.Entities$Announcement">
@@ -198,6 +198,10 @@
     <update id="updateAnnouncement">
         update announcements set audience=#{audience},title=#{title},content=#{content},enabled=#{enabled},updated_at=now()
         where id=#{id}
+    </update>
+
+    <update id="updateAnnouncementEnabled">
+        update announcements set enabled=#{enabled}, updated_at=now() where id=#{id}
     </update>
 
     <delete id="deleteAnnouncement">delete from announcements where id=#{id}</delete>
@@ -228,7 +232,7 @@
 
     <update id="updateDriverProfileFull">
         update drivers set real_name=#{realName}, phone=#{phone}, vehicle_type_id=#{vehicleTypeId}, vehicle_plate=#{vehiclePlate},
-        service_area=#{serviceArea}, audit_status='PENDING', updated_at=now() where id=#{driverId}
+        audit_status='PENDING', updated_at=now() where id=#{driverId}
     </update>
 
     <insert id="insertComplaint">

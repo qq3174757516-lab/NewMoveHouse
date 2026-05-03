@@ -2,6 +2,7 @@ package com.newmovehouse.common;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.BindException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -24,7 +25,19 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class})
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResponse<Void> handleValid(Exception e) {
-        return ApiResponse.fail("参数校验失败");
+        String msg = "参数校验失败";
+        if (e instanceof MethodArgumentNotValidException) {
+            FieldError fe = ((MethodArgumentNotValidException) e).getBindingResult().getFieldError();
+            if (fe != null && fe.getDefaultMessage() != null) {
+                msg = fe.getDefaultMessage();
+            }
+        } else if (e instanceof BindException) {
+            FieldError fe = ((BindException) e).getBindingResult().getFieldError();
+            if (fe != null && fe.getDefaultMessage() != null) {
+                msg = fe.getDefaultMessage();
+            }
+        }
+        return ApiResponse.fail(msg);
     }
 
     /** 未分类异常，返回 500 */

@@ -38,6 +38,7 @@ public class WebConfig implements WebMvcConfigurer {
                         "/api/common/estimate",
                         "/api/common/map/**",
                         "/api/common/map-web-config",
+                        "/api/common/amap/**",
                         "/api/common/announcements/**"
                 );
     }

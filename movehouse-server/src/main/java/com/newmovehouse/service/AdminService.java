@@ -121,6 +121,12 @@ public class AdminService {
         log("ANNOUNCEMENT_DELETE", "ANNOUNCEMENT", id, null);
     }
 
+    /** 仅切换公告启用状态（无需打开编辑弹窗） */
+    public void setAnnouncementEnabled(Long id, int enabled) {
+        mapper.updateAnnouncementEnabled(id, enabled);
+        log("ANNOUNCEMENT_ENABLE", "ANNOUNCEMENT", id, enabled == 1 ? "启用" : "禁用");
+    }
+
     /** 某司机资质文件列表（管理端查看） */
     public List<Entities.DriverDocument> driverDocuments(Long driverId) {
         return mapper.listDriverDocumentsAdmin(driverId);

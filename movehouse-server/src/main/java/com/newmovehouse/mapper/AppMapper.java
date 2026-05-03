@@ -112,8 +112,7 @@ public interface AppMapper {
 
     /** 司机部分资料更新 */
     int updateDriverProfile(@Param("driverId") Long driverId, @Param("vehicleTypeId") Long vehicleTypeId,
-                            @Param("vehiclePlate") String vehiclePlate, @Param("phone") String phone,
-                            @Param("serviceArea") String serviceArea);
+                            @Param("vehiclePlate") String vehiclePlate, @Param("phone") String phone);
     /** 司机收入汇总 */
     Map<String, Object> driverIncome(@Param("driverId") Long driverId);
 
@@ -156,8 +155,10 @@ public interface AppMapper {
                                 @Param("realName") String realName,
                                 @Param("phone") String phone,
                                 @Param("vehicleTypeId") Long vehicleTypeId,
-                                @Param("vehiclePlate") String vehiclePlate,
-                                @Param("serviceArea") String serviceArea);
+                                @Param("vehiclePlate") String vehiclePlate);
+
+    /** 仅更新公告启用状态 */
+    int updateAnnouncementEnabled(@Param("id") Long id, @Param("enabled") Integer enabled);
 
     /** 插入投诉 */
     int insertComplaint(@Param("orderId") Long orderId,

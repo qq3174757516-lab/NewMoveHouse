@@ -20,8 +20,10 @@
           </template>
         </el-table-column>
         <el-table-column prop="createdAt" label="创建时间" width="180" />
-        <el-table-column label="操作" width="220" fixed="right">
+        <el-table-column label="操作" width="340" fixed="right">
           <template #default="{ row }">
+            <el-button v-if="!row.enabled" type="success" link @click="toggleEnabled(row, 1)">启用</el-button>
+            <el-button v-else type="warning" link @click="toggleEnabled(row, 0)">禁用</el-button>
             <el-button @click="openEdit(row)">编辑</el-button>
             <el-button type="danger" @click="remove(row)">删除</el-button>
           </template>
@@ -99,6 +101,12 @@ async function remove(row) {
   await ElMessageBox.confirm(`确认删除公告「${row.title}」？`, '删除确认', { type: 'warning' })
   await http.delete(`/admin/announcements/${row.id}`)
   ElMessage.success('删除成功')
+  load()
+}
+
+async function toggleEnabled(row, enabled) {
+  await http.post(`/admin/announcements/${row.id}/enabled`, { enabled })
+  ElMessage.success(enabled === 1 ? '已启用' : '已禁用')
   load()
 }
 

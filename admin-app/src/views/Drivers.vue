@@ -19,7 +19,9 @@
       <el-table-column prop="phone" label="电话"/>
       <el-table-column prop="vehiclePlate" label="车牌"/>
       <el-table-column prop="vehicleTypeName" label="车型"/>
-      <el-table-column prop="auditStatus" label="审核"/>
+      <el-table-column label="审核" width="120">
+        <template #default="{ row }">{{ auditStatusCn(row.auditStatus) }}</template>
+      </el-table-column>
       <el-table-column label="操作" width="360" fixed="right">
         <template #default="{row}">
           <el-button @click="openDocs(row)">资料</el-button>
@@ -51,6 +53,7 @@
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import http from '../api/http'
+import { auditStatusCn } from '../utils/orderStatus'
 
 const rows = ref([])
 const status = ref('')

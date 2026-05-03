@@ -10,14 +10,13 @@
       <el-form v-if="form" :model="form" label-width="100px">
         <el-form-item label="姓名"><el-input v-model="form.realName" autocomplete="off" /></el-form-item>
         <el-form-item label="手机号"><el-input v-model="form.phone" autocomplete="off" /></el-form-item>
-        <el-form-item label="审核状态"><el-tag>{{ me?.auditStatus }}</el-tag></el-form-item>
+        <el-form-item label="审核状态"><el-tag>{{ auditStatusCn(me?.auditStatus) }}</el-tag></el-form-item>
         <el-form-item label="车型">
           <el-select v-model="form.vehicleTypeId" style="width:100%">
             <el-option v-for="v in vehicles" :key="v.id" :label="v.name" :value="v.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="车牌"><el-input v-model="form.vehiclePlate" autocomplete="off" /></el-form-item>
-        <el-form-item label="服务区域"><el-input v-model="form.serviceArea" autocomplete="off" /></el-form-item>
       </el-form>
     </div>
 
@@ -52,6 +51,7 @@ import { onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import http from '../api/http'
 import { useAuthStore } from '../stores/auth'
+import { auditStatusCn } from '../utils/orderStatus'
 
 const auth = useAuthStore()
 const me = ref(null)
@@ -63,8 +63,7 @@ const form = reactive({
   realName: '',
   phone: '',
   vehicleTypeId: null,
-  vehiclePlate: '',
-  serviceArea: ''
+  vehiclePlate: ''
 })
 
 function fileUrlToAbs(url) {
@@ -86,8 +85,7 @@ async function load() {
     realName: me.value.realName || '',
     phone: me.value.phone || '',
     vehicleTypeId: me.value.vehicleTypeId,
-    vehiclePlate: me.value.vehiclePlate || '',
-    serviceArea: me.value.serviceArea || ''
+    vehiclePlate: me.value.vehiclePlate || ''
   })
 }
 

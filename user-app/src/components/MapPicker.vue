@@ -4,7 +4,7 @@
     <el-dialog v-model="visible" title="地图选点" width="860px" @opened="initMap">
       <div class="toolbar">
         <el-input v-model="keyword" placeholder="搜索地点，例如：长沙站" @keyup.enter="search" />
-        <el-button type="primary" :icon="Search" @click="search">搜索</el-button>
+        <el-button type="primary" :icon="Search" :loading="searching" @click="search">搜索</el-button>
         <el-button :icon="Aim" @click="locateCurrent">当前位置</el-button>
       </div>
       <div :id="mapId" class="map-wrap">
@@ -22,7 +22,7 @@
 import { nextTick, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Aim, Location, Search } from '@element-plus/icons-vue'
-import { loadAmap } from '../utils/amapConfig'
+import { apiBase, loadAmap } from '../utils/amapConfig'
 
 const props = defineProps({ label: String })
 const emit = defineEmits(['pick'])
@@ -30,43 +30,49 @@ const visible = ref(false)
 const keyword = ref('')
 const mapReady = ref(false)
 const resolving = ref(false)
+const searching = ref(false)
 const mapId = `amap-picker-${Math.random().toString(36).slice(2)}`
 const picked = reactive({ lng: null, lat: null, address: '' })
-let map, marker, geocoder, placeSearch
+let map, marker
 let AMapNs = null
 
-/** 逆地理编码：高德会返回 formattedAddress、周边 POI 等，用于展示“地名”而非纯坐标 */
-function reverseGeocode(lng, lat) {
-  return new Promise(resolve => {
-    if (!geocoder) {
-      resolve(`${lng},${lat}`)
-      return
+/**
+ * 逆地理：走服务端 REST（/v3/geocode/regeo），不依赖浏览器里的 Geocoder 插件，
+ * 可避免 JSAPI 安全校验报错 INVALID_USER_SCODE。
+ */
+async function reverseGeocode(lng, lat) {
+  try {
+    const res = await fetch(
+      `${apiBase()}/common/amap/regeo?lng=${encodeURIComponent(lng)}&lat=${encodeURIComponent(lat)}`
+    )
+    const json = await res.json()
+    if (json.code !== 0 || !json.data) {
+      return `${lng},${lat}`
     }
-    geocoder.getAddress([lng, lat], (status, result) => {
-      if (status === 'complete' && result?.regeocode) {
-        const r = result.regeocode
-        const formatted = r.formattedAddress
-        const poiName = r.pois?.[0]?.name
-        const name = [poiName, formatted].filter(Boolean).join(' · ')
-        resolve(name || formatted || `${lng},${lat}`)
-      } else {
-        resolve(`${lng},${lat}`)
-      }
-    })
-  })
+    const d = json.data
+    if (d.success && d.displayAddress) {
+      return String(d.displayAddress)
+    }
+    if (!d.success && d.message) {
+      ElMessage.warning(String(d.message))
+    }
+    return `${lng},${lat}`
+  } catch (e) {
+    ElMessage.warning('逆地理请求失败，请检查后端 amap.server-key 是否具备逆地理权限')
+    return `${lng},${lat}`
+  }
 }
 
 async function initMap() {
   if (map) return
   await nextTick()
   try {
-    AMapNs = await loadAmap(['AMap.Geocoder', 'AMap.PlaceSearch', 'AMap.ToolBar'])
+    // 仅加载地图与 ToolBar；PlaceSearch/Geocoder 在开启安全密钥后常在浏览器侧报 INVALID_USER_SCODE，地名改由服务端 REST 解析
+    AMapNs = await loadAmap(['AMap.ToolBar'])
     mapReady.value = true
     map = new AMapNs.Map(mapId, { viewMode: '2D', zoom: 12, center: [112.938882, 28.228304] })
     map.addControl(new AMapNs.ToolBar())
     marker = new AMapNs.Marker({ anchor: 'bottom-center' })
-    geocoder = new AMapNs.Geocoder()
-    placeSearch = new AMapNs.PlaceSearch({ city: '全国', pageSize: 10 })
     map.on('click', async e => {
       await choose(e.lnglat.lng, e.lnglat.lat, null)
     })
@@ -75,10 +81,8 @@ async function initMap() {
   }
 }
 
-/**
- * 选点：若已有提示名（搜索/POI）则优先展示；否则等待逆地理编码完成后再写入地名。
- */
 async function choose(lng, lat, addressHint) {
+  if (!map || !marker) return
   picked.lng = lng
   picked.lat = lat
   marker.setPosition([lng, lat])
@@ -96,33 +100,45 @@ async function choose(lng, lat, addressHint) {
   }
 }
 
-function search() {
-  if (!placeSearch || !keyword.value) return
-  placeSearch.search(keyword.value, async (status, result) => {
-    const poi = result?.poiList?.pois?.[0]
-    if (poi && AMapNs) {
-      const name = [poi.name, poi.address].filter(Boolean).join(' ')
-      await choose(poi.location.lng, poi.location.lat, name)
+/** 关键字搜索：服务端 /v3/place/text */
+async function search() {
+  if (!keyword.value.trim()) return
+  if (!map || !marker) {
+    ElMessage.warning('请等待地图加载完成后再搜索')
+    return
+  }
+  searching.value = true
+  try {
+    const res = await fetch(
+      `${apiBase()}/common/amap/place-text?keywords=${encodeURIComponent(keyword.value.trim())}`
+    )
+    const json = await res.json()
+    if (json.code !== 0 || !json.data) {
+      ElMessage.warning('搜索请求失败')
       return
     }
-    if (!geocoder || !AMapNs) {
-      ElMessage.warning('未找到地点')
+    const d = json.data
+    if (!d.success) {
+      ElMessage.warning(d.message ? String(d.message) : '未找到地点')
       return
     }
-    geocoder.getLocation(keyword.value, async (s, r) => {
-      const loc = r?.geocodes?.[0]?.location
-      if (!loc) {
-        ElMessage.warning('未找到地点')
-        return
-      }
-      const addr = r.geocodes[0].formattedAddress || keyword.value
-      await choose(loc.lng, loc.lat, addr)
-    })
-  })
+    const lng = Number(d.lng)
+    const lat = Number(d.lat)
+    const hint = d.displayAddress ? String(d.displayAddress) : ''
+    await choose(lng, lat, hint || null)
+  } catch (e) {
+    ElMessage.warning('搜索失败，请检查后端 Key 是否开通关键字搜索')
+  } finally {
+    searching.value = false
+  }
 }
 
 function locateCurrent() {
   if (!navigator.geolocation) return ElMessage.warning('当前浏览器不支持定位')
+  if (!map || !marker) {
+    ElMessage.warning('请等待地图加载完成')
+    return
+  }
   navigator.geolocation.getCurrentPosition(
     async p => {
       await choose(p.coords.longitude, p.coords.latitude, null)
@@ -132,7 +148,6 @@ function locateCurrent() {
   )
 }
 
-/** 确认前再次逆地理，避免异步回调未完成时用户快速点击确认导致仍显示经纬度 */
 async function confirm() {
   if (picked.lng == null || picked.lat == null) return
   resolving.value = true

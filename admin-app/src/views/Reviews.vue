@@ -1,2 +1,42 @@
-<template><div class="page"><div class="toolbar"><h1>评价管理</h1><el-button @click="load">刷新</el-button></div><el-table :data="rows" border><el-table-column prop="id" label="ID" width="80"/><el-table-column prop="userName" label="用户"/><el-table-column prop="driverName" label="司机"/><el-table-column prop="rating" label="评分"/><el-table-column prop="content" label="内容"/><el-table-column prop="hidden" label="隐藏"/><el-table-column label="操作"><template #default="{row}"><el-button @click="hide(row,row.hidden?0:1)">{{row.hidden?'显示':'隐藏'}}</el-button></template></el-table-column></el-table></div></template>
-<script setup>import {onMounted,ref} from 'vue';import http from '../api/http';const rows=ref([]);async function load(){rows.value=await http.get('/admin/reviews')}async function hide(r,h){await http.post(`/admin/reviews/${r.id}/hidden`,{hidden:h});load()}onMounted(load)</script>
+<template>
+  <div class="page">
+    <div class="toolbar">
+      <h1>评价管理</h1>
+      <el-button @click="load">刷新</el-button>
+    </div>
+    <el-table :data="rows" border>
+      <el-table-column prop="id" label="ID" width="80" />
+      <el-table-column prop="userName" label="用户" />
+      <el-table-column prop="driverName" label="司机" />
+      <el-table-column prop="rating" label="评分" width="80" />
+      <el-table-column prop="content" label="内容" min-width="200" show-overflow-tooltip />
+      <el-table-column label="隐藏" width="120">
+        <template #default="{ row }">{{ reviewHiddenCn(row.hidden) }}</template>
+      </el-table-column>
+      <el-table-column label="操作" width="120">
+        <template #default="{ row }">
+          <el-button @click="hide(row, row.hidden ? 0 : 1)">{{ row.hidden ? '显示' : '隐藏' }}</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+  </div>
+</template>
+
+<script setup>
+import { onMounted, ref } from 'vue'
+import http from '../api/http'
+import { reviewHiddenCn } from '../utils/orderStatus'
+
+const rows = ref([])
+
+async function load() {
+  rows.value = await http.get('/admin/reviews')
+}
+
+async function hide(r, h) {
+  await http.post(`/admin/reviews/${r.id}/hidden`, { hidden: h })
+  load()
+}
+
+onMounted(load)
+</script>

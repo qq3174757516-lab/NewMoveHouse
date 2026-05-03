@@ -4,6 +4,7 @@ import com.newmovehouse.common.BizException;
 import com.newmovehouse.common.UserContext;
 import com.newmovehouse.dto.OrderDtos;
 import com.newmovehouse.mapper.AppMapper;
+import com.newmovehouse.util.AmapGeoRestClient;
 import com.newmovehouse.util.GeoUtil;
 import com.newmovehouse.websocket.MoveHouseWebSocketHandler;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +33,8 @@ public class OrderService {
     private StringRedisTemplate redisTemplate;
     @Autowired
     private ObjectMapper objectMapper;
+    @Autowired
+    private AmapGeoRestClient amapGeoRestClient;
 
     /**
      * 用户创建订单，写入数据库与状态日志，并向司机端广播新订单。
@@ -140,7 +143,8 @@ public class OrderService {
         if (mapper.updateOrderStatus(orderId, current, next) == 0) {
             throw new BizException("订单状态已变化");
         }
-        String remark = "司机操作：" + action + (locationRemark == null ? "" : "，当前位置：" + locationRemark);
+        String remark = "司机操作：" + driverActionCn(action)
+                + (locationRemark == null ? "" : "，当前位置：" + formatLocationAsAddress(locationRemark));
         mapper.insertStatusLog(orderId, "DRIVER", driverId, current, next, remark);
         Map<String, Object> updated = detail(orderId);
         ws.pushToUser(Long.valueOf(String.valueOf(updated.get("userId"))), "ORDER_STATUS_CHANGED", updated);
@@ -266,6 +270,44 @@ public class OrderService {
      * @param action  司机动作
      * @return 下一状态枚举值
      */
+    /** 司机端按钮对应的英文 action → 中文说明（写入订单日志给用户看） */
+    private String driverActionCn(String action) {
+        if (action == null) {
+            return "";
+        }
+        switch (action) {
+            case "ARRIVE":
+                return "到达装货地";
+            case "START_MOVE":
+                return "开始搬运";
+            case "FINISH_MOVE":
+                return "完成搬运";
+            default:
+                return action;
+        }
+    }
+
+    /** 将「lng,lat」尝试解析为地名（服务端逆地理 REST）；失败则保留原字符串 */
+    private String formatLocationAsAddress(String lngLatCsv) {
+        if (lngLatCsv == null || lngLatCsv.isEmpty()) {
+            return lngLatCsv;
+        }
+        String[] parts = lngLatCsv.split(",");
+        if (parts.length != 2) {
+            return lngLatCsv;
+        }
+        try {
+            BigDecimal lng = new BigDecimal(parts[0].trim());
+            BigDecimal lat = new BigDecimal(parts[1].trim());
+            Map<String, Object> geo = amapGeoRestClient.reverseGeocode(lng, lat);
+            if (Boolean.TRUE.equals(geo.get("success")) && geo.get("displayAddress") != null) {
+                return String.valueOf(geo.get("displayAddress"));
+            }
+        } catch (Exception ignored) {
+        }
+        return lngLatCsv;
+    }
+
     private String next(String current, String action) {
         Map<String, String> map = new HashMap<>();
         map.put("ARRIVE", "ACCEPTED:ARRIVED_LOADING");
